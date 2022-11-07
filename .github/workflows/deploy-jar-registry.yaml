@@ -14,7 +14,7 @@ on:  # yamllint disable-line rule:truthy
         required: false
         type: string
       JAVA_VERSION:
-        default: '14'
+        default: '11'
         required: false
         type: string
       # DOCKERFILE_FILE:
