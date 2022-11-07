@@ -1,0 +1,119 @@
+name: App Setup
+
+on:  # yamllint disable-line rule:truthy
+  workflow_call:
+    inputs:
+      OVERRIDE_NAME:
+        required: false
+        type: string
+      OVERRIDE_API_PATH:  # '/api/++SERVICE++'
+        required: false
+        type: string
+      API_FILE:
+        default: 'src/main/resources/application'
+        required: false
+        type: string
+      API_FILE_EXT:
+        default: '.yaml'
+        required: false
+        type: string
+      API_SEARCH:
+        default: 'context-path:'
+        required: false
+        type: string
+      IS_STACKHAWK_READY:
+        default: true
+        required: false
+        type: boolean
+      STACKHAWK_DIRECTORY:
+        default: 'stackhawk'
+        required: false
+        type: string
+      STACKHAWK_TMPL_YML:
+        default: 'stackhawk-tmpl.yml'
+        required: false
+        type: string
+    outputs:
+      NAME:
+        value: ${{ jobs.app-setup.outputs.NAME }}
+      PREVIEW_NAMESPACE:
+        value: ${{ jobs.app-setup.outputs.PREVIEW_NAMESPACE }}
+      IS_STACKHAWK_READY:
+        value: ${{ jobs.app-setup.outputs.IS_STACKHAWK_READY }}
+      API_PATH:
+        value: ${{ jobs.app-setup.outputs.API_PATH }}
+
+jobs:
+
+  app-setup:
+    timeout-minutes: 1
+    runs-on: ubuntu-latest
+    outputs:
+      NAME: ${{ steps.set-name.outputs.NAME }}
+      PREVIEW_NAMESPACE: ${{ steps.set-name-pr-namespace.outputs.PREVIEW_NAMESPACE }}
+      API_PATH: ${{ steps.get-api-path.outputs.API_PATH }}
+      IS_STACKHAWK_READY: ${{ steps.stackhawk-ready-repo.outputs.IS_STACKHAWK_READY }}
+    steps:
+
+      - name: "📜 Set Name"
+        id: set-name
+        env:
+          OVERRIDE_NAME: ${{ inputs.OVERRIDE_NAME }}
+        run: |
+          NAME=${{ github.event.repository.name }}
+          echo "OVERRIDE_NAME: ${OVERRIDE_NAME}"
+          if [ -n "${OVERRIDE_NAME}" ]; then
+            NAME=${{ inputs.OVERRIDE_NAME }}
+          fi
+          echo "NAME: ${NAME}"
+          echo "::set-output name=NAME::${NAME}"
+
+      - name: "📜 Set Name for Preview Namespace"
+        id: set-name-pr-namespace
+        run: |
+          PREVIEW_NAMESPACE=pr-${{ steps.set-name.outputs.NAME }}-${{ github.event.number }}
+          echo "PREVIEW_NAMESPACE: ${PREVIEW_NAMESPACE}"
+          # echo "::set-output name=PREVIEW_NAMESPACE::pr-${{ steps.set-name.outputs.NAME }}-${{ github.event.number }}"
+          echo "::set-output name=PREVIEW_NAMESPACE::${PREVIEW_NAMESPACE}"
+
+      - name: "☁️ Checkout repository"
+        uses: actions/checkout@v3
+
+      - name: "📜 Get API path"
+        id: get-api-path
+        env:
+          OVERRIDE_API_PATH: ${{ inputs.OVERRIDE_API_PATH }}
+          API_FILE: ${{ inputs.API_FILE }}${{ inputs.API_FILE_EXT }}
+          API_SEARCH: ${{ inputs.API_SEARCH }}
+        run: |
+          API_PATH=""
+          if [ -n "${OVERRIDE_API_PATH}" ]; then
+            API_PATH=${{ inputs.OVERRIDE_API_PATH }}
+          elif [ -f "${API_FILE}" ]; then
+            # Only find the 1st occurrence
+            API_PATH=$(grep "${API_SEARCH}" ${API_FILE} | awk '{print $2}'  | head -1)
+          fi
+          echo "API_PATH: ${API_PATH}"
+          echo "::set-output name=API_PATH::${API_PATH}/"
+
+      - name: "🦅 Stackhawk ready repo"
+        id: stackhawk-ready-repo
+        env:
+          STACKHAWK_DIRECTORY: ${{ inputs.STACKHAWK_DIRECTORY }}
+          FILE: ${{ inputs.STACKHAWK_TMPL_YML }}
+          OVERRIDE_IS_STACKHAWK_READY: ${{ inputs.IS_STACKHAWK_READY }}
+        run: |
+          if [ "${OVERRIDE_IS_STACKHAWK_READY}" = true ]; then
+            if [ -f "${STACKHAWK_DIRECTORY}/${FILE}" ]; then
+              echo "${FILE} exists"
+              IS_STACKHAWK_READY=true
+            else
+              echo "${FILE} does not exists"
+              IS_STACKHAWK_READY=false
+            fi
+          else
+            IS_STACKHAWK_READY=${{ inputs.IS_STACKHAWK_READY }}
+            echo "OVERRIDE_IS_STACKHAWK_READY with ${{ inputs.IS_STACKHAWK_READY }}"
+          fi
+          echo "IS_STACKHAWK_READY: ${IS_STACKHAWK_READY}"
+          echo "::set-output name=IS_STACKHAWK_READY::${IS_STACKHAWK_READY}"

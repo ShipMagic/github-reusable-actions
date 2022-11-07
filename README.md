@@ -1,2 +1,3 @@
 # github-reusable-actions
-Inspired by https://github.com/favedom-dev/github-reusable-workflow
+
+Inspired by [favedom-dev/github-reusable-workflow](https://github.com/favedom-dev/github-reusable-workflow)
