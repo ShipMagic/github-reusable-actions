@@ -18,43 +18,10 @@ on:  # yamllint disable-line rule:truthy
         default: '16'
         required: false
         type: string
-      # DOCKERFILE_FILE:
-      #   default: './Dockerfile'
-      #   required: false
-      #   type: string
-      # TAG2:
-      #   default: 'latest'
-      #   required: false
-      #   type: string
-      # PROJECT_ID:
-      #   default: 'ShipMagic'
-      #   required: false
-      #   type: string
-      # GAR_LOCATION:
-      #   default: 'us-central1'
-      #   required: false
-      #   type: string
-      # GAR_MAVEN_URL:
-      #   default: 'https://console.cloud.google.com/artifacts/maven/'
-      #   required: false
-      #   type: string
-      # MAVEN_REGISTRY:
-      #   default: 'peeq-java'
-      #   required: false
-      #   type: string
-      # JAR_PATH:
-      #   default: 'com.peeq'
-      #   required: false
-      #   type: string
+
     secrets:
       GH_TOKEN:  # GitHub token
         required: true
-      # WIF_PROVIDER:  # Workload Identity Federation Provider
-      #   required: true
-      # WIF_SERVICE_ACCOUNT:  # Workload Identity Federation Service Account
-      #   required: true
-      # NEXUS_FAVEDOM_DEV_PASSWORD:
-      #   required: true
 
 jobs:
 
@@ -69,27 +36,11 @@ jobs:
       - name: "☁️ Checkout repository"
         uses: actions/checkout@v3
 
-      # - name: "🔧 Google Auth Token"
-      #   if: ${{ !env.ACT }}
-      #   id: auth-gcp-token
-      #   uses: 'google-github-actions/auth@v0'
-      #   with:
-      #     token_format: 'access_token'
-      #     workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
-      #     service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
-
       - name: "🔧 Set up JDK ${{ inputs.JAVA_VERSION }}"
         uses: actions/setup-java@v3
         with:
           java-version: '${{ inputs.JAVA_VERSION }}'
           distribution: 'temurin'
-
-      # - name: "🔧 Maven ~/.m2/settings.xml"
-      #   env:
-      #     NEXUS_FAVEDOM_DEV_PASSWORD: ${{ secrets.NEXUS_FAVEDOM_DEV_PASSWORD }}
-      #   run: |
-      #     wget https://raw.githubusercontent.com/ShipMagic/github-reusable-workflow/master/.m2/settings.xml
-      #     envsubst < ./settings.xml > ~/.m2/settings.xml
 
       - name: "🔨 Maven set version"
         run: |
