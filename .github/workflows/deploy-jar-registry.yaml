@@ -79,12 +79,12 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: "🔧 Maven ~/.m2/settings.xml"
-        env:
-          NEXUS_FAVEDOM_DEV_PASSWORD: ${{ secrets.NEXUS_FAVEDOM_DEV_PASSWORD }}
-        run: |
-          wget https://raw.githubusercontent.com/ShipMagic/github-reusable-workflow/master/.m2/settings.xml
-          envsubst < ./settings.xml > ~/.m2/settings.xml
+      # - name: "🔧 Maven ~/.m2/settings.xml"
+      #   env:
+      #     NEXUS_FAVEDOM_DEV_PASSWORD: ${{ secrets.NEXUS_FAVEDOM_DEV_PASSWORD }}
+      #   run: |
+      #     wget https://raw.githubusercontent.com/ShipMagic/github-reusable-workflow/master/.m2/settings.xml
+      #     envsubst < ./settings.xml > ~/.m2/settings.xml
 
       - name: "🔨 Maven set version"
         run: |
@@ -92,6 +92,8 @@ jobs:
 
       - name: "🔨 Build with Maven"
         run: mvn ${{ inputs.MVN_ARGS }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
 #       - name: "🌐 Link to Lib"
 #         env:
