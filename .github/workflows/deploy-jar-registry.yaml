@@ -13,14 +13,14 @@ on:  # yamllint disable-line rule:truthy
         default: 'clean deploy'
         required: false
         type: string
-      DOCKERFILE_FILE:
-        default: './Dockerfile'
-        required: false
-        type: string
-      TAG2:
-        default: 'latest'
-        required: false
-        type: string
+      # DOCKERFILE_FILE:
+      #   default: './Dockerfile'
+      #   required: false
+      #   type: string
+      # TAG2:
+      #   default: 'latest'
+      #   required: false
+      #   type: string
       # PROJECT_ID:
       #   default: 'ShipMagic'
       #   required: false
