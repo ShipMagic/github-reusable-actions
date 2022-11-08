@@ -48,6 +48,8 @@ jobs:
 
       - name: "🔨 Build with Maven"
         run: mvn -B ${{ inputs.MVN_ARGS }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 #       - name: "🌐 Link to Lib"
 #         env:
