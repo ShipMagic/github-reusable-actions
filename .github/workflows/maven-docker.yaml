@@ -29,6 +29,8 @@ on:  # yamllint disable-line rule:truthy
     secrets:
       GH_TOKEN:
         required: true
+      GH_USERNAME:
+        required: true
       REGISTRY_LOGIN_SERVER:
         required: true
       REGISTRY_USERNAME:
@@ -55,6 +57,14 @@ jobs:
         with:
           java-version: '${{ inputs.JAVA_VERSION }}'
           distribution: 'temurin'
+
+      - name: "🔧 Maven ~/.m2/settings.xml"
+        env:
+          GH_USERNAME: ${{ secrets.GH_USERNAME }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          wget https://raw.githubusercontent.com/ShipMagic/github-reusable-workflow/master/.m2/settings.xml
+          envsubst < ./settings.xml > ~/.m2/settings.xml
 
       - name: "🔨 Maven set version"
         env:
