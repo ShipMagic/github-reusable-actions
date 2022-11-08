@@ -13,14 +13,8 @@ on:  # yamllint disable-line rule:truthy
         default: '17'
         required: false
         type: string
-      MVN_ENV_VARS:  # -DmyVariable=someValue
-        required: false
-        type: string
       MVN_ARGS:
         default: 'clean install'
-        required: false
-        type: string
-      MVN_ARGS_EXTRA:
         required: false
         type: string
       DOCKERFILE_FILE:
@@ -41,8 +35,6 @@ on:  # yamllint disable-line rule:truthy
         required: true
       REGISTRY_PASSWORD:
         required: true
-      MVN_ARGS_SECRETS:
-        required: false
 
 jobs:
 
@@ -64,29 +56,15 @@ jobs:
           java-version: '${{ inputs.JAVA_VERSION }}'
           distribution: 'temurin'
 
-      # - name: "🔧 Maven ~/.m2/settings.xml"
-      #   env:
-      #     NEXUS_FAVEDOM_DEV_PASSWORD: ${{ secrets.NEXUS_FAVEDOM_DEV_PASSWORD }}
-      #   run: |
-      #     wget https://raw.githubusercontent.com/ShipMagic/github-reusable-workflow/master/.m2/settings.xml
-      #     envsubst < ./settings.xml > ~/.m2/settings.xml
-
       - name: "🔨 Maven set version"
         env:
           VERSION: ${{ inputs.VERSION }}
-        run: mvn versions:set -DnewVersion=${VERSION}
+        run: mvn -B versions:set -DnewVersion=${VERSION}
 
       - name: "🔨 Build with Maven"
-        run: |
-          echo "MVN_ARGS        : ${{ inputs.MVN_ARGS }}"
-          echo "MVN_ENV_VARS    : ${{ inputs.MVN_ENV_VARS }}"
-          echo "MVN_ARGS_EXTRA  : ${{ inputs.MVN_ARGS_EXTRA }}"
-          echo "MVN_ARGS_SECRETS: ${{ secrets.MVN_ARGS_SECRETS }}"
-          mvn \
-          ${{ secrets.MVN_ARGS_SECRETS }} \
-          ${{ inputs.MVN_ENV_VARS }} \
-          ${{ inputs.MVN_ARGS }} \
-          ${{ inputs.MVN_ARGS_EXTRA }}
+        run: mvn -B ${{ inputs.MVN_ARGS }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 # https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action
       - name: '🐳 Build and push image'
@@ -96,28 +74,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          # docker build -f Dockerfile -t ${{ inputs.NAME }} .
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
-          # docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
-
-
-      # - name: "🐳 Docker: build, tag, and push"
-      #   uses: docker/build-push-action@v3
-      #   with:
-      #     context: .
-      #     file: ${{ env.DOCKERFILE_FILE }}
-      #     push: true
-      #     tags: ${{ steps.docker-tags.outputs.tags }}
-
-      # - name: "🌐 Link to Container"
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GH_TOKEN }}
-# yamllint disable rule:line-length
-        # run: |-
-        #   echo "https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/"
-        #   if [ "${{ github.event_name }}" = "pull_request" ]; then
-        #     gh pr comment ${{ github.event.number }} \
-        #     --body "🐳 Container: [${{ inputs.NAME }} ${{ inputs.VERSION }}](https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/)"
-        #   fi
-
-# yamllint enable rule:line-length
+          docker build -f ${{ inputs.DOCKERFILE_FILE }} -t ${{ inputs.NAME }} .
+          docker image tag ${{ inputs.NAME }} "${{ secrets.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}:${{ inputs.VERSION }}"
+          docker image tag ${{ inputs.NAME }} "${{ secrets.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}:latest"
+          docker push -a "${{ secrets.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}"
