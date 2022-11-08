@@ -18,9 +18,9 @@ on:  # yamllint disable-line rule:truthy
         required: false
         type: string
 
-    secrets:
-      GH_TOKEN:  # GitHub token
-        required: true
+    # secrets:
+      # GH_TOKEN:  # GitHub token
+      #   required: true
 
 jobs:
 
@@ -47,8 +47,6 @@ jobs:
 
       - name: "🔨 Build with Maven"
         run: mvn ${{ inputs.MVN_ARGS }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
 #       - name: "🌐 Link to Lib"
 #         env:
