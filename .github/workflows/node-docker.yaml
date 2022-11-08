@@ -14,17 +14,9 @@ on:  # yamllint disable-line rule:truthy
         required: false
         type: string
       NODE_VERSION:
-        default: 16
+        default: 18
         required: false
         type: number
-      UPLOAD_GS:
-        default: false
-        required: false
-        type: boolean
-      GS_BUCKET:
-        default: 'peeq-public-assets.joinpeeq.com'
-        required: false
-        type: string
       DOCKERFILE_FILE:
         default: './Dockerfile'
         required: false
@@ -39,14 +31,6 @@ on:  # yamllint disable-line rule:truthy
         type: string
       PROJECT_ID:
         default: 'ShipMagic'
-        required: false
-        type: string
-      GAR_LOCATION:
-        default: 'us-central1'
-        required: false
-        type: string
-      DOCKER_REGISTRY:
-        default: 'peeq-docker'
         required: false
         type: string
       INSTALL:
@@ -89,12 +73,14 @@ on:  # yamllint disable-line rule:truthy
     secrets:
       GH_TOKEN:  # GitHub token
         required: true
+      REGISTRY_LOGIN_SERVER:
+        required: true
+      REGISTRY_USERNAME:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
       NPM_TOKEN:
-        required: true
-      WIF_PROVIDER:  # Workload Identity Federation Provider
-        required: true
-      WIF_SERVICE_ACCOUNT:  # Workload Identity Federation Service Account
-        required: true
+        required: false
 
 jobs:
 
@@ -109,24 +95,10 @@ jobs:
       - name: "☁️ Checkout repository"
         uses: actions/checkout@v3
 
-      - name: "🔧 Google Auth Token"
-        if: ${{ !env.ACT }}
-        id: auth-gcp-token
-        uses: 'google-github-actions/auth@v0'
+      - name: '🔧 Login via Azure CLI'
+        uses: azure/login@v1
         with:
-          token_format: 'access_token'
-          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
-          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
-
-      - name: "🔧 Docker Auth"
-        if: ${{ !env.ACT }}
-        id: auth-docker
-        uses: 'docker/login-action@v1'
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth-gcp-token.outputs.access_token }}'
-          registry: '${{ inputs.GAR_LOCATION }}-docker.pkg.dev'  # Google Artifact Registry
-
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: "🔧 Setup node.js"
         uses: actions/setup-node@v3
@@ -134,36 +106,11 @@ jobs:
           node-version: ${{ inputs.NODE_VERSION }}
           cache: npm
 
-      - name: "🔧 Setup DEPLOY_URL"
-        id: set-deploy-url
-        if: inputs.UPLOAD_GS == true
-        run: |
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            DEPLOY_URL="https://${{ inputs.GS_BUCKET }}/${{ inputs.NAME}}/${{ inputs.VERSION }}/"
-            echo "RELEASE DEPLOY_URL: ${DEPLOY_URL}"
-          else
-            DEPLOY_URL="./"
-            echo "PR DEPLOY_URL: ${DEPLOY_URL}"
-          fi
-          echo "DEPLOY_URL: ${DEPLOY_URL}"
-          echo ${DEPLOY_URL} > DEPLOY_URL
-          echo "::set-output name=deploy-url::${DEPLOY_URL}"
-
-      - name: "🔧 Update base Url"
-        if: inputs.UPLOAD_GS == true
-        run: sed -i "s/++DEPLOY_URL++/$(sed -e 's/\//\\\//g' DEPLOY_URL)/g" ./docker/environment.tpl.json
-
-# https://github.com/ShipMagic/jenkins-x-kubernetes/blob/master/packs/javascript-ui-nginx-helmfile/pipeline.yaml
-
-      # - name: "🔧 helm init"
+      # - name: "🔧 Setup .npmrc"
+      #   env:
+      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       #   run: |
-      #     helm init --client-only --stable-repo-url ${{ inputs.HELM_REPO }}
-
-      - name: "🔧 Setup .npmrc"
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+      #     echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
 
       - name: "🔨 ${{ inputs.INSTALL_NAME }}"
         if: inputs.INSTALL == true
@@ -177,44 +124,48 @@ jobs:
         if: inputs.BUILD == true
         run: ${{ inputs.BUILD_CMD }}
 
-      # https://github.com/google-github-actions/upload-cloud-storage
-      - name: "⬆️ Release: Upload to Google Storage"
-        if: github.event_name != 'pull_request' && inputs.UPLOAD_GS == true
-        id: 'upload-folder'
-        uses: 'google-github-actions/upload-cloud-storage@v0'
+# https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action
+      - name: '🐳 Build and push image'
+        uses: azure/docker-login@v1
         with:
-          path: 'dist/${{ inputs.NAME }}'
-          destination: '${{ inputs.GS_BUCKET }}/${{ inputs.NAME }}/${{ inputs.VERSION }}'
-          parent: false
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          # docker build -f Dockerfile -t ${{ inputs.NAME }} .
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
+          # docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
 
-      - name: "🔧 Setup Docker tags"
-        id: docker-tags
-        env:
-          DOCKER_LOCATION: ${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ inputs.DOCKER_REGISTRY }}/${{ inputs.NAME }}
-        run: |-
-          DOCKER_TAGS=${{ env.DOCKER_LOCATION }}:${{ inputs.VERSION }}
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            DOCKER_TAGS=$DOCKER_TAGS,${{ env.DOCKER_LOCATION }}:latest
-            # echo "IF: DOCKER_TAGS: $DOCKER_TAGS"
-          fi
-          echo "DOCKER_TAGS: $DOCKER_TAGS"
-          echo "::set-output name=tags::$DOCKER_TAGS"
+      # - name: "🐳 Docker tag"
+      #   run: |-
+      #     docker image tag ${{ inputs.NAME }} "${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ input.DOCKER_REGISTRY }}/${{ inputs.NAME }}:${{ steps.version.outputs.version }}"
+      #     docker image tag ${{ inputs.NAME }} "${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ input.DOCKER_REGISTRY }}/${{ inputs.NAME }}:latest"
 
-      - name: "🐳 Docker: build, tag, and push"
-        uses: docker/build-push-action@v3
-        with:
-          context: ${{ inputs.DOCKER_CONTEXT }}
-          file: ${{ env.DOCKERFILE_FILE }}
-          push: true
-          tags: ${{ steps.docker-tags.outputs.tags }}
+      # - name: "📦 Docker push"
+      #   if: ${{ !env.ACT }}
+      #   run: |-
+      #     docker push -a "${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ input.DOCKER_REGISTRY }}/${{ inputs.NAME }}"
+      #     # docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
 
-      - name: "🌐 Link to Container"
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      # - name: 'Deploy to Azure Container Instances'
+      #   uses: 'azure/aci-deploy@v1'
+      #   with:
+      #     resource-group: ${{ secrets.RESOURCE_GROUP }}
+      #     dns-name-label: ${{ secrets.RESOURCE_GROUP }}${{ github.run_number }}
+      #     image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/sampleapp:${{ github.sha }}
+      #     registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+      #     registry-username: ${{ secrets.REGISTRY_USERNAME }}
+      #     registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+      #     name: aci-sampleapp
+      #     location: 'west us'
+
+      # - name: "🌐 Link to Container"
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GH_TOKEN }}
 # yamllint disable rule:line-length
-        run: |-
-          echo "https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            gh pr comment ${{ github.event.number }} --body "🐳 Container: [${{ inputs.NAME }} ${{ inputs.VERSION }}](https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/)"
-          fi
+        # run: |-
+        #   echo "https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/"
+        #   if [ "${{ github.event_name }}" = "pull_request" ]; then
+        #     gh pr comment ${{ github.event.number }} --body "🐳 Container: [${{ inputs.NAME }} ${{ inputs.VERSION }}](https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/)"
+        #   fi
 # yamllint enable rule:line-length
