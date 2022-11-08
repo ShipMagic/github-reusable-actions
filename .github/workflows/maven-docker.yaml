@@ -25,13 +25,15 @@ on:  # yamllint disable-line rule:truthy
         default: 'latest'
         required: false
         type: string
+      REGISTRY_LOGIN_SERVER:
+        default: 'jxshipmagic.azurecr.io'
+        required: false
+        type: string
 
     secrets:
       GH_TOKEN:
         required: true
       GH_USERNAME:
-        required: true
-      REGISTRY_LOGIN_SERVER:
         required: true
       REGISTRY_USERNAME:
         required: true
@@ -77,14 +79,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 # https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action
-      - name: '🐳 Build and push image'
+      - name: '🐳 Docker login'
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          login-server: ${{ inputs.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
+
+      - name: '🐳 Docker build, tag and push'
+        run: |
           docker build -f ${{ inputs.DOCKERFILE_FILE }} -t ${{ inputs.NAME }} .
-          docker image tag ${{ inputs.NAME }} "${{ secrets.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}:${{ inputs.VERSION }}"
-          docker image tag ${{ inputs.NAME }} "${{ secrets.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}:latest"
-          docker push -a "${{ secrets.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}"
+          docker image tag ${{ inputs.NAME }} "${{ inputs.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}:${{ inputs.VERSION }}"
+          docker push -a "${{ inputs.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}"
