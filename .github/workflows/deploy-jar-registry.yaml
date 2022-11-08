@@ -14,8 +14,7 @@ on:  # yamllint disable-line rule:truthy
         required: false
         type: string
       JAVA_VERSION:
-        # default: '11'
-        default: '16'
+        default: '17'
         required: false
         type: string
 
