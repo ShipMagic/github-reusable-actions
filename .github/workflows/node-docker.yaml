@@ -10,7 +10,7 @@ on:  # yamllint disable-line rule:truthy
         required: true
         type: string
       NODE_VERSION:
-        default: 18
+        default: 16
         required: false
         type: number
       DOCKERFILE_FILE:
