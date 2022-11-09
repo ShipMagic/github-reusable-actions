@@ -56,8 +56,8 @@ jobs:
       - name: "🔨 NPM install"
         run: npm install --legacy-peers-deps
 
-      - name: "🔨 NPM test"
-        run: ${{ inputs.TEST_CMD }}
+      # - name: "🔨 NPM test"
+      #   run: ${{ inputs.TEST_CMD }}
 
       - name: "🔨 NPM build"
         run: npm run build
