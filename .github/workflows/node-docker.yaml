@@ -54,7 +54,7 @@ jobs:
           cache: npm
 
       - name: "🔨 NPM install"
-        run: npm install --legacy-peers-deps
+        run: npm install --legacy-peer-deps
 
       # - name: "🔨 NPM test"
       #   run: ${{ inputs.TEST_CMD }}
