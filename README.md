@@ -31,13 +31,17 @@ az role assignment create --assignee "++OBJECT_ID_SERVICE_PRINCIPAL++" \
 
 ---
 
+## GitHub repo secrets adn Azure Key Vault
+
+Azure Key Vault [`jxshipmagic`](https://portal.azure.com/#@cblackburnlive.onmicrosoft.com/resource/subscriptions/b7965add-088b-48e5-863b-924167a26e54/resourceGroups/dev-staging-sm-rg-cluster/providers/Microsoft.KeyVault/vaults/jxshipmagic/secrets)
+
 Each repo has that uses these worklows has the secrets set
 
-| SECRET | INFO | NOTES |
-| --- | --- | --- |
-| `GH_USERNAME` | - only used for maven `settings.xml` <br /> - the username that matches `GH_TOKEN` | |
-| `GH_TOKEN` | Generated token for `GH_USERNAME` | needs to be able to write packages for `shipmagic-commons` |
-| `REGISTRY_USERNAME`| Service Principal account ID (not name) | `az ad sp list --display-name sp-acr-shipmagic --query "[].appId" --output tsv` |
-| `REGISTRY_PASSWORD` | Service Principal account password | refer to the saved `Service principal password`. |
+| GitHub SECRET | Azure key Vault SECRET | INFO | NOTES |
+| --- | --- | --- | --- |
+| `GH_USERNAME` | `GH-USERNAME` | - only used for maven `settings.xml` <br /> - the username that matches `GH_TOKEN` | |
+| `GH_TOKEN` | `GH-TOKEN` | Generated token for `GH_USERNAME` | needs to be able to write packages for `shipmagic-commons` |
+| `REGISTRY_USERNAME` | `REGISTRY-USERNAME` | Service Principal account ID (not name) | `az ad sp list --display-name sp-acr-shipmagic --query "[].appId" --output tsv` |
+| `REGISTRY_PASSWORD` | `REGISTRY-PASSWORD` | Service Principal account password | refer to the saved `Service principal password`. |
 
 ---
