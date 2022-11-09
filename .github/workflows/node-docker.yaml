@@ -9,10 +9,6 @@ on:  # yamllint disable-line rule:truthy
       VERSION:
         required: true
         type: string
-      HELM_REPO:
-        default: 'https://charts.helm.sh/stable'
-        required: false
-        type: string
       NODE_VERSION:
         default: 18
         required: false
@@ -21,66 +17,22 @@ on:  # yamllint disable-line rule:truthy
         default: './Dockerfile'
         required: false
         type: string
-      DOCKER_CONTEXT:
-        default: '.'
-        required: false
-        type: string
-      TAG2:
-        default: 'latest'
-        required: false
-        type: string
-      PROJECT_ID:
-        default: 'ShipMagic'
-        required: false
-        type: string
-      INSTALL:
-        default: true
-        required: false
-        type: boolean
-      INSTALL_NAME:
-        default: 'NPM install'
-        required: false
-        type: string
-      INSTALL_CMD:
-        default: 'npm install --legacy-peer-deps'
-        required: false
-        type: string
-      TEST:
-        default: true
-        required: false
-        type: boolean
-      TEST_NAME:
-        default: 'NPM test'
-        required: false
-        type: string
       TEST_CMD:
         default: 'npm test'
         required: false
         type: string
-      BUILD:
-        default: true
-        required: false
-        type: boolean
-      BUILD_NAME:
-        default: 'NPM build'
-        required: false
-        type: string
-      BUILD_CMD:
-        default: 'npm run build'
+      REGISTRY_LOGIN_SERVER:
+        default: 'jxshipmagic.azurecr.io'
         required: false
         type: string
 
     secrets:
       GH_TOKEN:  # GitHub token
         required: true
-      REGISTRY_LOGIN_SERVER:
-        required: true
       REGISTRY_USERNAME:
         required: true
       REGISTRY_PASSWORD:
         required: true
-      NPM_TOKEN:
-        required: false
 
 jobs:
 
@@ -106,66 +58,25 @@ jobs:
           node-version: ${{ inputs.NODE_VERSION }}
           cache: npm
 
-      # - name: "🔧 Setup .npmrc"
-      #   env:
-      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      #   run: |
-      #     echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+      - name: "🔨 NPM install"
+        run: npm install --legacy-peers-deps
 
-      - name: "🔨 ${{ inputs.INSTALL_NAME }}"
-        if: inputs.INSTALL == true
-        run: ${{ inputs.INSTALL_CMD }}
-
-      - name: "🔨 ${{ inputs.TEST_NAME }}"
-        if: inputs.TEST == true
+      - name: "🔨 NPM test"
         run: ${{ inputs.TEST_CMD }}
 
-      - name: "🔨 ${{ inputs.BUILD_NAME }}"
-        if: inputs.BUILD == true
-        run: ${{ inputs.BUILD_CMD }}
+      - name: "🔨 NPM build"
+        run: npm run build
 
 # https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action
-      - name: '🐳 Build and push image'
+      - name: '🐳 Docker login'
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          login-server: ${{ inputs.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
-          # docker build -f Dockerfile -t ${{ inputs.NAME }} .
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
-          # docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
 
-      # - name: "🐳 Docker tag"
-      #   run: |-
-      #     docker image tag ${{ inputs.NAME }} "${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ input.DOCKER_REGISTRY }}/${{ inputs.NAME }}:${{ steps.version.outputs.version }}"
-      #     docker image tag ${{ inputs.NAME }} "${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ input.DOCKER_REGISTRY }}/${{ inputs.NAME }}:latest"
-
-      # - name: "📦 Docker push"
-      #   if: ${{ !env.ACT }}
-      #   run: |-
-      #     docker push -a "${{ inputs.GAR_LOCATION }}-docker.pkg.dev/${{ inputs.PROJECT_ID }}/${{ input.DOCKER_REGISTRY }}/${{ inputs.NAME }}"
-      #     # docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ inputs.NAME }}:${{ github.sha }}
-
-      # - name: 'Deploy to Azure Container Instances'
-      #   uses: 'azure/aci-deploy@v1'
-      #   with:
-      #     resource-group: ${{ secrets.RESOURCE_GROUP }}
-      #     dns-name-label: ${{ secrets.RESOURCE_GROUP }}${{ github.run_number }}
-      #     image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/sampleapp:${{ github.sha }}
-      #     registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-      #     registry-username: ${{ secrets.REGISTRY_USERNAME }}
-      #     registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-      #     name: aci-sampleapp
-      #     location: 'west us'
-
-      # - name: "🌐 Link to Container"
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GH_TOKEN }}
-# yamllint disable rule:line-length
-        # run: |-
-        #   echo "https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/"
-        #   if [ "${{ github.event_name }}" = "pull_request" ]; then
-        #     gh pr comment ${{ github.event.number }} --body "🐳 Container: [${{ inputs.NAME }} ${{ inputs.VERSION }}](https://console.cloud.google.com/artifacts/docker/${{ inputs.PROJECT_ID }}/${{ inputs.GAR_LOCATION }}/peeq-docker/${{ inputs.NAME }}?project=${{ inputs.PROJECT_ID }}/)"
-        #   fi
-# yamllint enable rule:line-length
+      - name: '🐳 Docker build, tag and push'
+        run: |
+          docker build -f ${{ inputs.DOCKERFILE_FILE }} -t ${{ inputs.NAME }} .
+          docker image tag ${{ inputs.NAME }} "${{ inputs.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}:${{ inputs.VERSION }}"
+          docker push -a "${{ inputs.REGISTRY_LOGIN_SERVER }}/shipmagic/${{ inputs.NAME }}"
