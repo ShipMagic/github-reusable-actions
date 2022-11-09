@@ -47,7 +47,7 @@ jobs:
       - name: "☁️ Checkout repository"
         uses: actions/checkout@v3
 
-      - name: "🔧 Setup node.js"
+      - name: "🔧 Setup node.js ${{ inputs.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.NODE_VERSION }}
