@@ -44,3 +44,4 @@ Each repo has that uses these worklows has the secrets set
 | `REGISTRY_USERNAME` | `REGISTRY-USERNAME` | Service Principal account ID (not name) | `az ad sp list --display-name sp-acr-shipmagic --query "[].appId" --output tsv` |
 | `REGISTRY_PASSWORD` | `REGISTRY-PASSWORD` | Service Principal account password | refer to the saved `Service principal password`. |
 
+---
