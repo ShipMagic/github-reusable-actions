@@ -44,24 +44,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "🔧 Google Auth Token"
-        if: ${{ !env.ACT }}
-        id: auth-gcp-token
-        uses: 'google-github-actions/auth@v0'
-        with:
-          token_format: 'access_token'
-          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
-          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
-
-      - name: "🔧 Docker Auth"
-        if: ${{ !env.ACT }}
-        id: auth-docker
-        uses: 'docker/login-action@v1'
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth-gcp-token.outputs.access_token }}'
-          registry: '${{ inputs.GAR_LOCATION }}-docker.pkg.dev'  # Google Artifact Registry
-
 # https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action
       - name: '🐳 Docker login'
         uses: azure/docker-login@v1
