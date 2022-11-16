@@ -9,8 +9,8 @@ on:  # yamllint disable-line rule:truthy
       VERSION:
         required: true
         type: string
-      PROJECT_ID:
-        default: 'ShipMagic'
+      DOCKERFILE_FILE:
+        default: './Dockerfile'
         required: false
         type: string
       REGISTRY_LOGIN_SERVER:
