@@ -1,0 +1,105 @@
+name: Fastlane
+
+on:  # yamllint disable-line rule:truthy
+  workflow_call:
+    inputs:
+      APP_NAME:
+        required: true
+        type: string
+      REPO_VERSION:
+        required: true
+        type: string
+      BUILD_VERSION:
+        required: true
+        type: string
+      STARTING_DIR:
+        default: 'gh-actions'
+        required: false
+        type: string
+      BUILD_DIR_NAME:
+        default: 'build'
+        required: false
+        type: string
+      LOG_DIR_NAME:
+        default: 'logs'
+        required: false
+        type: string
+      CONFIG_DIR:
+        default: '.config'
+        required: false
+        type: string
+
+    secrets:
+      GH_TOKEN:
+        required: true
+      # START: VM
+      VM_HOST_IP_ADDRESS:
+        required: true
+      VM_SSH_PRIVATE_KEY:
+        required: true
+      VM_USERNAME:
+        required: true
+      # END: VM
+
+jobs:
+
+  fastlane:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      BASE_DIR: ${{ inputs.STARTING_DIR }}/${{ inputs.APP_NAME }}/${{ inputs.REPO_VERSION }}
+    steps:
+
+      - name: "GITHUB INFO"
+        env:
+          GITHUB_CONTEXT: ${{ toJSON(github) }}
+        run: |-
+          echo "PR number          : ${{ github.event.pull_request.number }}"
+          echo "github.event_name  : ${{ github.event_name }}"
+          echo "github.run_attempt : ${{ github.run_attempt }}"
+          echo "github.run_number  : ${{ github.run_number }}"
+          echo "--------------------------------------"
+          echo "GITHUB_CONTEXT: ${GITHUB_CONTEXT}"
+
+
+      - name: "🔧 Configure ssh"
+        env:
+          SSH_USER: ${{ secrets.VM_USERNAME }}
+          SSH_KEY: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.VM_HOST_IP_ADDRESS }}
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/${{ secrets.VM_HOST_IP_ADDRESS }}.key
+          chmod 600 ~/.ssh/${{ secrets.VM_HOST_IP_ADDRESS }}.key
+          cat >>~/.ssh/config <<END
+          Host ${{ secrets.VM_HOST_IP_ADDRESS }}
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/${{ secrets.VM_HOST_IP_ADDRESS }}.key
+            StrictHostKeyChecking no
+          END
+
+      # - name: "🔧 Create remote directory"
+      #   # parent directory must exist, going ahead and creating logs directory
+      #   run: |
+      #     ssh ${{ secrets.VM_HOST_IP_ADDRESS }} 'mkdir -p ~/${{ env.BASE_DIR }}/${{ inputs.LOG_DIR_NAME }}'
+
+      - name: "☁️ Checkout repository via ssh"
+        run: |
+          if [ dir does not exit ]; then
+            echo "checkout repo"
+            ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "gh repo clone ${{ github.repository }}"
+          else
+            echo "udpate repo"
+            ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "cd ~/${{ env.BASE_DIR }}/ && gh repo sync"
+          fi
+
+      - name: "🔨 Deploy"
+        env:
+          SCRIPT_DIR: ./docker_compose
+          SCRIPT_NAME: deploy.sh
+# yamllint disable rule:line-length
+        run: |
+          ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "cd ~/${{ inputs.BUILD_DIR_NAME }}/${{ env.SCRIPT_DIR }} && ./${{ env.SCRIPT_NAME }}'"
+# yamllint enable rule:line-length
