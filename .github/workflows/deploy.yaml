@@ -1,33 +1,29 @@
-name: Fastlane
+name: Deploy Docker Containers
 
 on:  # yamllint disable-line rule:truthy
   workflow_call:
     inputs:
-      APP_NAME:
-        required: true
-        type: string
-      REPO_VERSION:
-        required: true
-        type: string
-      BUILD_VERSION:
-        required: true
-        type: string
-      STARTING_DIR:
-        default: 'gh-actions'
-        required: false
-        type: string
+      # APP_NAME:
+      #   required: true
+      #   type: string
+      # REPO_VERSION:
+      #   required: true
+      #   type: string
+      # BUILD_VERSION:
+      #   required: true
+      #   type: string
       BUILD_DIR_NAME:
-        default: 'build'
+        default: 'staging-env'
         required: false
         type: string
-      LOG_DIR_NAME:
-        default: 'logs'
-        required: false
-        type: string
-      CONFIG_DIR:
-        default: '.config'
-        required: false
-        type: string
+      # LOG_DIR_NAME:
+      #   default: 'logs'
+      #   required: false
+      #   type: string
+      # CONFIG_DIR:
+      #   default: '.config'
+      #   required: false
+      #   type: string
 
     secrets:
       GH_TOKEN:
@@ -48,7 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      BASE_DIR: ${{ inputs.STARTING_DIR }}/${{ inputs.APP_NAME }}/${{ inputs.REPO_VERSION }}
     steps:
 
       - name: "GITHUB INFO"
