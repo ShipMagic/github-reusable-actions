@@ -39,7 +39,7 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
 
-  fastlane:
+  deploy:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     env:
@@ -82,13 +82,20 @@ jobs:
 
       - name: "☁️ Checkout repository via ssh"
         run: |
-          if [ dir does not exit ]; then
-            echo "checkout repo"
-            ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "gh repo clone ${{ github.repository }}"
-          else
-            echo "udpate repo"
-            ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "cd ~/${{ env.BASE_DIR }}/ && gh repo sync"
-          fi
+          ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "
+            if [ -d ./${{ github.name }} ]; then
+              echo "update repo under ./${{ github.name }}"
+              echo "PWD: `pwd`"
+              cd ./${{ github.name }}/
+              gh repo sync
+              ls -la
+            else
+              echo "checkout repo ${{ github.repository }}"
+              echo "PWD: `pwd`"
+              gh repo clone ${{ github.repository }}
+              ls -la
+            fi
+          "
 
       - name: "🔨 Deploy"
         env:
@@ -96,5 +103,8 @@ jobs:
           SCRIPT_NAME: deploy.sh
 # yamllint disable rule:line-length
         run: |
-          ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "cd ~/${{ inputs.BUILD_DIR_NAME }}/${{ env.SCRIPT_DIR }} && ./${{ env.SCRIPT_NAME }}'"
+          ssh ${{ secrets.VM_HOST_IP_ADDRESS }} "
+            cd ~/${{ inputs.BUILD_DIR_NAME }}/${{ env.SCRIPT_DIR }} &&
+            ./${{ env.SCRIPT_NAME }}
+          "
 # yamllint enable rule:line-length
